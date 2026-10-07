@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+aiosqlite
+python-dotenv
+anthropic
+pandas
+scikit-learn
+numpy
+networkx

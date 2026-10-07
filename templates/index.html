@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nidaan Clinical Sentinel</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- ASHA Secure Login Screen -->
+    <div id="login-screen" style="position: fixed; inset: 0; background: var(--primary-dark); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+        <div style="background: white; padding: 3rem; border-radius: 8px; width: 100%; max-width: 400px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2" style="margin-bottom: 1rem;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                <h2 style="color: var(--primary-dark); margin-bottom: 0.5rem;">Nidaan Sentinel</h2>
+                <p class="meta">MoHFW Authorized Access Only</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>ASHA Registry ID</label>
+                    <input type="text" id="login-id" required placeholder="e.g. ASHA-4092" style="text-transform: uppercase;">
+                </div>
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label>4-Digit Secure PIN</label>
+                    <input type="password" id="login-pin" required pattern="[0-9]{4}" placeholder="••••">
+                </div>
+                <div id="login-error" class="hidden" style="color: var(--risk-high); font-size: 0.85rem; margin-bottom: 1rem; text-align: center; font-weight: 600;"></div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 1rem;">Authenticate</button>
+            </form>
+        </div>
+        <p style="color: rgba(255,255,255,0.5); font-size: 0.85rem; margin-top: 2rem;">Demo Credentials: ID: ASHA-4092 | PIN: 1234</p>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="new-patient-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 1.5rem; color: var(--primary-dark);">
+                <span class="lang-en">Register New Patient</span><span class="lang-hi">नया मरीज़ पंजीकृत करें</span>
+            </h2>
+            <form id="new-patient-form">
+                <div class="form-group">
+                    <label><span class="lang-en">Full Name</span><span class="lang-hi">पूरा नाम</span></label>
+                    <input type="text" id="patient-name" required placeholder="Enter official name">
+                </div>
+                <div class="form-row" style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label><span class="lang-en">Age</span><span class="lang-hi">उम्र</span></label>
+                        <input type="number" id="patient-age" required min="1" max="120">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label><span class="lang-en">Biological Sex</span><span class="lang-hi">लिंग</span></label>
+                        <select id="patient-gender" required>
+                            <option value="">Select</option>
+                            <option value="Male">Male / पुरुष</option>
+                            <option value="Female">Female / महिला</option>
+                            <option value="Other">Other / अन्य</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row" style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label><span class="lang-en">Village / Location</span><span class="lang-hi">वार्ड / स्थान</span></label>
+                        <input type="text" id="patient-village" required placeholder="e.g., Wada">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label><span class="lang-en">Known Conditions</span><span class="lang-hi">मौजूदा बीमारियाँ</span></label>
+                        <input type="text" id="patient-conditions" placeholder="e.g., Asthma">
+                    </div>
+                </div>
+                <div class="modal-actions" style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button type="button" id="cancel-patient-btn" class="btn btn-outline" style="flex: 1;">
+                        <span class="lang-en">Cancel</span><span class="lang-hi">रद्द करें</span>
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="flex: 2;">
+                        <span class="lang-en">Initialize Record</span><span class="lang-hi">रिकॉर्ड शुरू करें</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="top-nav">
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; color: #4ADE80;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+            Nidaan Sentinel
+        </div>
+        <div class="nav-controls">
+            <button id="lang-btn" class="btn btn-ghost" onclick="toggleLang()">हिंदी</button>
+            <button class="btn btn-ghost" onclick="logout()" style="color: var(--risk-high); font-size: 0.85rem; border: 1px solid var(--risk-high); padding: 0.2rem 0.5rem;">
+                <span class="lang-en">Logout</span><span class="lang-hi">लॉग आउट</span>
+            </button>
+            <div class="operator-badge"><span id="nav-worker-name">Awaiting Login...</span></div>
+            <div class="status-indicator">
+                <span class="dot online" id="connection-dot"></span>
+                <span id="connection-status">ABDM Sync: Active</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar" style="display: flex; flex-direction: column;">
+            <div class="sidebar-header">
+                <h2><span class="lang-en">Triage Queue</span><span class="lang-hi">सक्रिय कतार</span></h2>
+                <button id="add-patient-btn" class="btn btn-primary btn-sm">+ <span class="lang-en">New</span><span class="lang-hi">नया</span></button>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="search-patients" placeholder="Search..." onkeyup="filterPatients()">
+            </div>
+            <ul id="patient-list" class="patient-list" style="flex: 1; overflow-y: auto;"></ul>
+            
+            <div class="sidebar-footer" style="margin-top: auto; padding: 1rem; border-top: 1px solid var(--border);">
+                <button id="academy-btn" class="btn btn-outline" style="width: 100%; background: #F0FDF4; border-color: #4ADE80; color: #166534;" onclick="showAcademy()">
+                    📚 <span class="lang-en">Nidaan Academy</span><span class="lang-hi">निदान अकादमी</span>
+                </button>
+            </div>
+        </aside>
+
+        <section class="main-content">
+            <!-- Command Center View -->
+            <div id="command-center-view" class="command-center">
+                <div class="cc-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1><span class="lang-en">Facility Overview</span><span class="lang-hi">सुविधा अवलोकन</span></h1>
+                    <button class="btn btn-outline" style="background: white;" onclick="downloadMonthlyReport()">
+                        📥 <span class="lang-en">Export MoHFW Register</span><span class="lang-hi">मासिक रिपोर्ट डाउनलोड करें</span>
+                    </button>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-title">
+                            <span class="lang-en">Total Registered</span><span class="lang-hi">कुल पंजीकृत</span>
+                        </div>
+                        <div class="stat-value" id="cc-total-patients">--</div>
+                    </div>
+                    <div class="stat-card alert-card">
+                        <div class="stat-title">IDSP Surveillance</div>
+                        <div class="stat-value">Active</div>
+                        <div class="stat-trend warning">Monitoring local clusters</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nidaan Academy View -->
+            <div id="academy-view" class="hidden" style="padding: 2rem; max-width: 900px; margin: 0 auto;">
+                <div style="margin-bottom: 2rem; text-align: center;">
+                    <h1 style="color: var(--primary-dark); font-size: 2rem; margin-bottom: 0.5rem;">
+                        <span class="lang-en">Nidaan Academy</span><span class="lang-hi">निदान अकादमी</span>
+                    </h1>
+                    <p style="color: var(--text-light);">
+                        <span class="lang-en">Continuous learning modules for Frontline Health Workers</span>
+                        <span class="lang-hi">फ्रंटलाइन स्वास्थ्य कार्यकर्ताओं के लिए निरंतर शिक्षण मॉड्यूल</span>
+                    </p>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                    <div class="card" style="border-top: 4px solid var(--accent-blue);">
+                        <h3 style="margin-bottom: 0.5rem;"><span class="lang-en">IMNCI Danger Signs</span><span class="lang-hi">IMNCI खतरे के संकेत</span></h3>
+                        <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1rem;">
+                            <span class="lang-en">Learn to identify critical pneumonia, dehydration, and malnutrition in children under 5.</span>
+                            <span class="lang-hi">5 साल से कम उम्र के बच्चों में गंभीर निमोनिया, निर्जलीकरण और कुपोषण की पहचान करना सीखें।</span>
+                        </p>
+                        <button class="btn btn-outline btn-sm" style="width: 100%;"><span class="lang-en">Start Module</span><span class="lang-hi">मॉड्यूल शुरू करें</span></button>
+                    </div>
+                    <div class="card" style="border-top: 4px solid var(--risk-high);">
+                        <h3 style="margin-bottom: 0.5rem;"><span class="lang-en">Maternal Pre-eclampsia</span><span class="lang-hi">मातृ प्री-एक्लम्पसिया</span></h3>
+                        <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1rem;">
+                            <span class="lang-en">Understanding blood pressure trends and danger symptoms during the 2nd and 3rd trimesters.</span>
+                            <span class="lang-hi">दूसरी और तीसरी तिमाही के दौरान रक्तचाप के रुझान और खतरे के लक्षणों को समझना।</span>
+                        </p>
+                        <button class="btn btn-outline btn-sm" style="width: 100%;"><span class="lang-en">Start Module</span><span class="lang-hi">मॉड्यूल शुरू करें</span></button>
+                    </div>
+                    <div class="card" style="border-top: 4px solid var(--risk-med);">
+                        <h3 style="margin-bottom: 0.5rem;"><span class="lang-en">Fever Outbreak Protocols</span><span class="lang-hi">बुखार प्रकोप प्रोटोकॉल</span></h3>
+                        <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1rem;">
+                            <span class="lang-en">How to properly document and escalate suspected Dengue or Malaria clusters to the IDSP.</span>
+                            <span class="lang-hi">संदिग्ध डेंगू या मलेरिया समूहों को आईडीएसपी (IDSP) को ठीक से कैसे रिपोर्ट करें।</span>
+                        </p>
+                        <button class="btn btn-outline btn-sm" style="width: 100%;"><span class="lang-en">Start Module</span><span class="lang-hi">मॉड्यूल शुरू करें</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patient Detail View -->
+            <div id="patient-detail-view" class="hidden">
+                <div class="action-ribbon">
+                    <button class="btn btn-ghost" onclick="closePatientView()">← <span class="lang-en">Back</span><span class="lang-hi">वापस</span></button>
+                    <button class="btn btn-outline btn-sm" onclick="window.print()">Export EHR</button>
+                </div>
+
+                <div class="patient-header card">
+                    <div style="display: flex; justify-content: space-between;">
+                        <div>
+                            <h1 id="pd-name">Name</h1>
+                            <p class="meta">ID: #<span id="pd-id"></span> • <span id="pd-age"></span> y/o • <span id="pd-gender"></span> • <strong id="pd-village"></strong></p>
+                            <div class="comorbidity-tag">
+                                <span class="lang-en">History:</span><span class="lang-hi">इतिहास:</span> 
+                                <span id="pd-conditions"></span>
+                            </div>
+                        </div>
+                        <div id="header-risk-indicator" class="status-badge neutral">Awaiting Data</div>
+                    </div>
+                </div>
+
+                <div class="flex-grid">
+                    <div class="col" style="flex: 1.2;">
+                        
+                        <!-- Vitals Input Area -->
+                        <div class="card vitals-input-area">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h3 class="section-title" style="margin-bottom: 0;">
+                                    <span class="lang-en">Log Clinical Vitals & Symptoms</span>
+                                    <span class="lang-hi">नैदानिक ​​वाइटल्स और लक्षण दर्ज करें</span>
+                                </h3>
+                                <button type="button" id="voice-dictation-btn" class="btn btn-outline btn-sm" style="border-radius: 50px; padding: 0.5rem 1rem;" onclick="startVoiceDictation()">
+                                    🎙️ <span class="lang-en">Speak</span><span class="lang-hi">बोलें</span>
+                                </button>
+                            </div>
+                            <form id="vitals-form">
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label>
+                                        <span class="lang-en">Select Clinical Workflow</span>
+                                        <span class="lang-hi">नैदानिक ​​कार्यप्रवाह चुनें</span>
+                                    </label>
+                                    <select id="v-workflow" onchange="updateSymptomChecklist()" style="border: 2px solid var(--accent-blue);">
+                                        <option value="General">Fever & General Triage / बुखार और सामान्य</option>
+                                        <option value="Child">Child Danger-Sign (< 5 yrs) / शिशु खतरे के संकेत</option>
+                                        <option value="Maternal">Maternal Risk Monitoring / मातृ जोखिम निगरानी</option>
+                                    </select>
+                                </div>
+
+                                <div id="symptom-checklist" class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.5rem; background: #F8FAFC; padding: 1rem; border-radius: 4px;">
+                                    <!-- JS injects bilingual checkboxes here -->
+                                </div>
+
+                                <div class="vitals-grid">
+                                    <div class="form-group"><label>BP SYS</label><input type="number" id="v-sys" required min="50" max="300" placeholder="120"></div>
+                                    <div class="form-group"><label>BP DIA</label><input type="number" id="v-dia" required min="30" max="200" placeholder="80"></div>
+                                    <div class="form-group"><label>SpO2 (%)</label><input type="number" id="v-spo2" required min="50" max="100" placeholder="98"></div>
+                                    <div class="form-group"><label>TEMP (°F)</label><input type="number" step="0.1" id="v-temp" required min="80" max="115" placeholder="98.6"></div>
+                                </div>
+                                <button type="submit" id="submit-vitals-btn" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                                    <span class="lang-en">Run Protocol Engine</span>
+                                    <span class="lang-hi">प्रोटोकॉल इंजन चलाएं</span>
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Chart Area -->
+                        <div class="card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <h3 class="section-title" style="margin-bottom: 0;">
+                                    <span class="lang-en">Vitals Trend (Timeline)</span>
+                                    <span class="lang-hi">स्वास्थ्य का ग्राफ (ट्रेंड)</span>
+                                </h3>
+                            </div>
+                            <div style="font-size: 0.8rem; margin-bottom: 1rem; padding: 0.5rem; background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 4px; color: #991B1B;">
+                                <strong>💡 <span class="lang-en">Guide:</span><span class="lang-hi">गाइड:</span></strong> 
+                                <span class="lang-en">A RED dot means the vital sign is in the danger zone.</span>
+                                <span class="lang-hi">लाल बिंदु का मतलब है कि वाइटल खतरे के स्तर पर है।</span>
+                            </div>
+                            <canvas id="trend-chart" style="height: 280px; width: 100%;"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="col" style="flex: 1;">
+                        <!-- XAI Engine -->
+                        <div class="card xai-engine-card" id="xai-container">
+                            <div class="xai-header">
+                                <h3 class="section-title" style="margin: 0; border: none; padding: 0;">
+                                    <span class="lang-en">Diagnostic Engine</span>
+                                    <span class="lang-hi">डायग्नोस्टिक इंजन</span>
+                                </h3>
+                                <div id="xai-risk-badge" class="badge-risk hidden"></div>
+                            </div>
+                            <div id="xai-content" class="xai-empty">
+                                <span class="lang-en">Engine idle. Submit vitals to analyze protocols.</span>
+                                <span class="lang-hi">इंजन निष्क्रिय है। विश्लेषण के लिए वाइटल्स दर्ज करें।</span>
+                            </div>
+                            
+                            <!-- Human Action Box -->
+                            <div id="human-action-box" class="hidden" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 2px dashed var(--border);">
+                                <label style="font-weight: 700; color: var(--risk-high); display: block; margin-bottom: 0.5rem;">
+                                    <span class="lang-en">Human-in-the-loop: Confirm Action</span>
+                                    <span class="lang-hi">मानव-इन-द-लूप: कार्रवाई की पुष्टि करें</span>
+                                </label>
+                                <select id="worker-action" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; border: 1px solid var(--border); border-radius: 4px;">
+                                    <option value="">Select Action Taken... / की गई कार्रवाई चुनें...</option>
+                                    <option value="Monitor">Monitor & Counsel / निगरानी और सलाह</option>
+                                    <option value="Refer">Refer to Facility / सुविधा के लिए रेफर करें</option>
+                                    <option value="Supervisor">Contact Supervisor / पर्यवेक्षक से संपर्क करें</option>
+                                    <option value="Override">Override AI (Document manually) / एआई को ओवरराइड करें</option>
+                                </select>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="submitHumanAction()" style="width: 100%;">
+                                    <span class="lang-en">Log Final Decision</span>
+                                    <span class="lang-hi">अंतिम निर्णय दर्ज करें</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- EHR Table -->
+                        <div class="card">
+                            <h3 class="section-title">
+                                <span class="lang-en">Electronic Health Record</span>
+                                <span class="lang-hi">इलेक्ट्रॉनिक स्वास्थ्य रिकॉर्ड</span>
+                            </h3>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th><span class="lang-en">Time</span><span class="lang-hi">समय</span></th>
+                                            <th>NIBP</th>
+                                            <th>SpO2</th>
+                                            <th>Temp</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="history-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

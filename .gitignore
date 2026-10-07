@@ -1,0 +1,23 @@
+# Environments
+.env
+venv/
+env/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+*-wal
+*-shm
+nidaan_health.db
+nidaan.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS generated files
+.DS_Store
+Thumbs.db
